@@ -1,0 +1,18 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+Vagrant.configure(2) do |config|
+
+  config.vm.box = "ubuntu/xenial64"
+  config.vm.network "forwarded_port", guest: 5000, host: 5000
+  config.vm.synced_folder "scripts", "/home/vagrant/scripts"
+  #config.vm.synced_folder "tensorflow_serving", "/home/vagrant/tensorflow_serving"
+
+  config.vm.provider "virtualbox" do |vb|
+    vb.name = "basic_dev"
+    vb.memory = "2048"
+    vb.cpus = 4
+  end
+
+  config.vm.provision "shell", path: 'scripts/provision.sh', privileged: false
+end
