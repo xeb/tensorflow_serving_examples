@@ -78,4 +78,3 @@ RUN bazel build tensorflow_serving/...
 
 RUN tar cvf tensorflow_serving-examples.tar.gz bazel-bin/tensorflow_serving/example/
 
-CMD ["/bin/sleep", "56000"]
