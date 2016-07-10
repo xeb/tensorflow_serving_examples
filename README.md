@@ -15,11 +15,15 @@ run-test-docker-machine.sh
 ```
 The above script will run a mnist_inference server, setup an SSH tunnel and then run the mnist_client.
 
+# Running self-contained Tests
+If you want to just run the full tutorial within the container, just run ```make test```
+
 # Additional Considerations
 
-## Notable Workarounds
-- Due to the following gRPC issue, I had to download the master branch of gRPC to pick up a recent bug fix.
-- 
+## Notable Mentions
+- See [tensorflow/serving Issue 114](https://github.com/tensorflow/serving/issues/114) - which was really due to the [grpc/grpc Issue 7133](https://github.com/grpc/grpc/issues/7133), I had to download the master branch of gRPC to pick up a recent bug fix.
+- Because of the above, gRPC is installed from scratch on the client Docker image
+- You can change the docker image prefix just by updating *image-name.config*
 
 ## Types of Dockerfiles
 There are four Dockerfiles in the repository.
