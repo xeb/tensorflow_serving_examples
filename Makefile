@@ -3,7 +3,7 @@
 all: clean client inference
 
 DOCKER_IMAGE_PREFIX=`cat image-name.config`
-DOCKER_CONTAINER_NAME=$(echo $$DOCKER_IMAGE_PREFIX | sed -e 's/\//_/g')
+DOCKER_CONTAINER_NAME=tf_serving_example
 
 clean:
 	rm -rf artifacts

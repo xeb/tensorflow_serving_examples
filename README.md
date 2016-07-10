@@ -21,6 +21,7 @@ If you want to just run the full tutorial within the container, just run ```make
 # Additional Considerations
 
 ## Notable Mentions
+- If you are using Docker Machine, you'll probably want to ensure you have a decently big VM for this build, something like: ```docker-machine create -d virtualbox --virtualbox-memory "10000" --virtualbox-disk-size "100000" --virtualbox-cpu-count "4" bfvm```
 - See [tensorflow/serving Issue 114](https://github.com/tensorflow/serving/issues/114) - which was really due to the [grpc/grpc Issue 7133](https://github.com/grpc/grpc/issues/7133), I had to download the master branch of gRPC to pick up a recent bug fix.
 - Because of the above, gRPC is installed from scratch on the client Docker image
 - You can change the docker image prefix just by updating *image-name.config*
