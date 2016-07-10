@@ -1,0 +1,7 @@
+FROM xebxeb/mlaasos:build # worth changing?
+
+ADD ./bazel-bin/tensorflow_serving/example/mnist_client /root/bin/mnist_client
+ADD ./bazel-bin/tensorflow_serving/example/mnist_client.runfiles /root/bin/mnist_client.runfiles
+
+ENTRYPOINT [ "/root/bin/mnist_client"]
+CMD [ "--num_tests=2000", "--server=localhost:9000" ]

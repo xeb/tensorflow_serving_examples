@@ -1,6 +1,5 @@
+# Original Dockerfile from: https://github.com/tensorflow/serving/blob/master/tensorflow_serving/tools/docker/Dockerfile.devel
 FROM ubuntu:14.04
-
-MAINTAINER Jeremiah Harmsen <jeremiah@google.com>
 
 RUN apt-get update && apt-get install -y \
         build-essential \
@@ -25,11 +24,19 @@ RUN curl -fSsL -O https://bootstrap.pypa.io/get-pip.py && \
     python get-pip.py && \
     rm get-pip.py
 
-# Set up grpc
+# Set up grpc from the master branch
 
 RUN pip install enum34 futures six && \
-    pip install --pre protobuf>=3.0.0a3 && \
-    pip install -i https://testpypi.python.org/simple --pre grpcio
+    pip install --pre protobuf>=3.0.0a3
+
+RUN git clone -b master https://github.com/grpc/grpc /src/grpc
+WORKDIR /src/grpc
+RUN git submodule update --init
+
+# For the next two commands do `sudo pip install` if you get permission-denied errors
+RUN pip install -rrequirements.txt
+RUN GRPC_PYTHON_BUILD_WITH_CYTHON=1 pip install .
+
 
 # Set up Bazel.
 
@@ -71,10 +78,39 @@ RUN mkdir -p /src/ && \
     git clone --recurse-submodules https://github.com/tensorflow/serving
 
 WORKDIR /src/serving/tensorflow/
+
+# We need to configure Python in order for Bazel to build correctly
 RUN ./util/python/python_config.sh --setup "$(which python)"
 
 WORKDIR /src/serving/
-RUN bazel build tensorflow_serving/...
 
-RUN tar cvf tensorflow_serving-examples.tar.gz bazel-bin/tensorflow_serving/example/
+# Replace the 0.0.0.0 address in mnist_inference.cc
+RUN sed -i.backup s/0\.0\.0\.0/\*/g /src/serving/tensorflow_serving/example/mnist_inference.cc
 
+# If you want to build everything, do this:
+# RUN bazel build tensorflow_serving/...
+
+# Let's just build what we need
+RUN bazel build //tensorflow_serving/example:mnist_inference
+RUN bazel build //tensorflow_serving/example:mnist_client
+RUN bazel build //tensorflow_serving/example:mnist_export
+
+# Make a test script
+RUN echo '#!/bin/bash\n\
+mkdir -p /models\n\
+cd /src/serving/bazel-bin/tensorflow_serving/example/\n\
+./mnist_export --training_iteration=1000 /models\n\
+./mnist_inference --port=9000 /models/00000001 & \n\
+./mnist_client --server=localhost:9000 \n\
+\n'\
+>> /root/test.sh
+RUN chmod +x /root/test.sh
+
+# Create artifacts to be exported, specifically: mnist_inference, mnist_client and mnist_export
+WORKDIR /root
+RUN tar cvf mnist_inference.tar.gz /src/serving/bazel-bin/tensorflow_serving/example/mnist_inference*
+RUN tar cvf mnist_client.tar.gz /src/serving/bazel-bin/tensorflow_serving/example/mnist_client*
+RUN tar cvf mnist_export.tar.gz /src/serving/bazel-bin/tensorflow_serving/example/mnist_export*
+
+# Default CMD is to do a test
+CMD [ "/root/test.sh" ]

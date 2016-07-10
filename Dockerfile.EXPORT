@@ -1,0 +1,6 @@
+FROM ubuntu:14.04
+
+RUN mkdir -p /models
+RUN /src/serving/bazel-bin/tensorflow_serving/example/mnist_export /models
+WORKDIR /models
+RUN tar cvf mnist_model.tar.gz 00000001/
