@@ -1,6 +1,19 @@
 FROM ubuntu:14.04
+RUN apt-get update && apt-get install -y \
+        python-dev \
+        python-numpy
 
+ADD ./artifacts/mnist_export.tar.gz /
 RUN mkdir -p /models
-RUN /src/serving/bazel-bin/tensorflow_serving/example/mnist_export /models
-WORKDIR /models
-RUN tar cvf mnist_model.tar.gz 00000001/
+WORKDIR /src/serving/bazel-bin/tensorflow_serving/example/
+
+# The default command will train a model and tar it up
+RUN echo '#!/bin/bash\n\
+cd /src/serving/bazel-bin/tensorflow_serving/example/ \n\
+./mnist_export --training_iteration=2000 /models \n\
+tar cvhf /root/mnist_model.tar.gz /models/00000001 \n\
+\n'\
+>> /root/export.sh
+RUN chmod +x /root/export.sh
+
+CMD [ "/root/export.sh" ]

@@ -1,35 +1,21 @@
 .PHONY: all
 
-all: clean \
-	build \
-	build-export \
-	run-export \
-	build-inference \
-	build-client \
-	clean \
-	run-inference \
-	run-client
+all: clean client inference
 
-DOCKER_CONTAINER_NAME=tf_serving_example
-DOCKER_IMAGE_PREFIX=xebxeb/$(DOCKER_CONTAINER_NAME)
-
-# Helpful shortcuts for specifics
-client: build-client run-client
-inference: build-inference run-inference
-export: build-export run-export
+DOCKER_IMAGE_PREFIX=`cat image-name.config`
+DOCKER_CONTAINER_NAME=$(echo $$DOCKER_IMAGE_PREFIX | sed -e 's/\//_/g')
 
 clean:
-	rm -rf src
-	rm -rf mnist_export.tar.gz
-	rm -rf mnist_client.tar.gz
-	rm -rf mnist_inference.tar.gz
-	rm -rf mnist_model.tar.gz
+	rm -rf artifacts
 
 ##################### BUILDING #####################
 build:
 	docker build -t $(DOCKER_IMAGE_PREFIX):build -f Dockerfile.BUILD .
 
 get-build-artifacts: build
+	# Let's work in an artifacts directory
+	mkdir -p artifacts
+
 	# Remove any BUILD containers
 	-docker rm -f $$(docker ps -a --filter "name=$(DOCKER_CONTAINER_NAME).build" | grep -v CONTAINER | awk '{print $$1}')
 
@@ -38,16 +24,16 @@ get-build-artifacts: build
 
 	# Copy the binary packages that were created from the BUILD
 	for ARTIFACT in mnist_export mnist_client mnist_inference; do \
-		docker cp $$(docker ps -a --filter "name=$(DOCKER_CONTAINER_NAME).build" | grep -v CONTAINER | awk '{ print $$1 }'):/root/$$ARTIFACT.tar.gz ./ ; \
-		tar zxvf $$ARTIFACT.tar.gz ; \
+		docker cp $$(docker ps -a --filter "name=$(DOCKER_CONTAINER_NAME).build" | grep -v CONTAINER | awk '{ print $$1 }'):/root/$$ARTIFACT.tar.gz ./artifacts/ ; \
 	done
 
+
 ##################### RUN mnist_export to get a model #####################
-build-export:
+build-export: get-build-artifacts
 	# Build the export container
 	docker build -t $(DOCKER_IMAGE_PREFIX):export -f Dockerfile.EXPORT .
 
-run-export:
+run-export: build-export
 	# Remove any export containers
 	-docker rm -f $$(docker ps -a --filter "name=$(DOCKER_CONTAINER_NAME).export" | grep -v CONTAINER | awk '{print $$1}')
 
@@ -55,32 +41,20 @@ run-export:
 	docker run --name=$(DOCKER_CONTAINER_NAME).export $(DOCKER_IMAGE_PREFIX):export
 
 	# Copy the model.tar.gz that was created from the export
-	docker cp $$(docker ps -a --filter "name=$(DOCKER_CONTAINER_NAME).export" | grep -v CONTAINER | head -n 1 | awk '{ print $$1 }'):/root/mnist_export.tar.gz ./
-
-	# Extract the model
-	tar zxvf mnist_model.tar.gz
+	docker cp $$(docker ps -a --filter "name=$(DOCKER_CONTAINER_NAME).export" | grep -v CONTAINER | head -n 1 | awk '{ print $$1 }'):/root/mnist_model.tar.gz ./artifacts/
 
 ##################### INFERENCE SERVER & CLIENT #####################
-build-inference: get-build-artifacts
+inference: run-export
 	# Now build our INFERENCE container
 	docker build -t $(DOCKER_IMAGE_PREFIX):inference -f Dockerfile.INFERENCE .
 
-build-client: get-build-artifacts
+client: get-build-artifacts
 	# Now build our CLIENT container
 	docker build -t $(DOCKER_IMAGE_PREFIX):client -f Dockerfile.CLIENT .
 
-run-inference:
-	-docker rm -f $$(docker ps -a --filter "name=$(DOCKER_CONTAINER_NAME).inference" | grep -v CONTAINER | awk '{print $$1}')
-	docker run --name=$(DOCKER_CONTAINER_NAME).inference -itd -p 127.0.0.1:30999:30999 $(DOCKER_IMAGE_PREFIX):inference
-
-run-client:
-	-docker rm -f $$(docker ps -a --filter "name=$(DOCKER_CONTAINER_NAME).client" | grep -v CONTAINER | awk '{print $$1}')
-	docker run --name=$(DOCKER_CONTAINER_NAME).client -it $(DOCKER_IMAGE_PREFIX):client --num_tests=2000 --server=127.0.0.1:30999
-
 ##################### SAMPLE TEST #####################
 
-test:
-	docker build -t tfserv-test -f Dockerfile.ALL .
-	docker run -it tfserv-test
+test: build
+	docker run -it $(DOCKER_IMAGE_PREFIX):build
 
 ##########################################

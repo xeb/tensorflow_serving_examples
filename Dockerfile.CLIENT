@@ -1,7 +1,21 @@
-FROM xebxeb/mlaasos:build # worth changing?
+FROM ubuntu:14.04
+RUN apt-get update && apt-get install -y \
+        git \
+        python-dev \
+        python-numpy \
+        python-pip
 
-ADD ./bazel-bin/tensorflow_serving/example/mnist_client /root/bin/mnist_client
-ADD ./bazel-bin/tensorflow_serving/example/mnist_client.runfiles /root/bin/mnist_client.runfiles
+# Set up grpc from the master branch
+RUN pip install enum34 futures six && \
+    pip install --pre protobuf>=3.0.0a3
 
-ENTRYPOINT [ "/root/bin/mnist_client"]
+RUN git clone -b master https://github.com/grpc/grpc /src/grpc
+WORKDIR /src/grpc
+RUN git submodule update --init
+RUN pip install -rrequirements.txt
+RUN GRPC_PYTHON_BUILD_WITH_CYTHON=1 pip install .
+
+ADD ./artifacts/mnist_client.tar.gz /
+
+ENTRYPOINT [ "/src/serving/bazel-bin/tensorflow_serving/example/mnist_client" ]
 CMD [ "--num_tests=2000", "--server=localhost:9000" ]

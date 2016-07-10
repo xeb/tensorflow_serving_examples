@@ -1,7 +1,7 @@
 FROM ubuntu:14.04
-RUN mkdir -p /models
-ADD ./bazel-bin/tensorflow_serving/example/mnist_inference /root/bin/mnist_inference
-ADD ./00000001/ /models/00000001/
 
-ENTRYPOINT [ "/root/bin/mnist_inference"]
+ADD ./artifacts/mnist_inference.tar.gz /
+ADD ./artifacts/mnist_model.tar.gz /
+
+ENTRYPOINT [ "/src/serving/bazel-bin/tensorflow_serving/example/mnist_inference" ]
 CMD [ "--port=9000", "/models/00000001/" ]

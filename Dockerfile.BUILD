@@ -25,15 +25,12 @@ RUN curl -fSsL -O https://bootstrap.pypa.io/get-pip.py && \
     rm get-pip.py
 
 # Set up grpc from the master branch
-
 RUN pip install enum34 futures six && \
     pip install --pre protobuf>=3.0.0a3
 
 RUN git clone -b master https://github.com/grpc/grpc /src/grpc
 WORKDIR /src/grpc
 RUN git submodule update --init
-
-# For the next two commands do `sudo pip install` if you get permission-denied errors
 RUN pip install -rrequirements.txt
 RUN GRPC_PYTHON_BUILD_WITH_CYTHON=1 pip install .
 
@@ -107,10 +104,12 @@ cd /src/serving/bazel-bin/tensorflow_serving/example/\n\
 RUN chmod +x /root/test.sh
 
 # Create artifacts to be exported, specifically: mnist_inference, mnist_client and mnist_export
-WORKDIR /root
-RUN tar cvf mnist_inference.tar.gz /src/serving/bazel-bin/tensorflow_serving/example/mnist_inference*
-RUN tar cvf mnist_client.tar.gz /src/serving/bazel-bin/tensorflow_serving/example/mnist_client*
-RUN tar cvf mnist_export.tar.gz /src/serving/bazel-bin/tensorflow_serving/example/mnist_export*
+# the runtime files are symlinks back to the original scripts so we want to derefence everything
+RUN tar cvhf /root/mnist_inference.tar.gz /src/serving/bazel-bin/tensorflow_serving/example/mnist_inference*
+
+RUN tar cvhf /root/mnist_client.tar.gz /src/serving/bazel-bin/tensorflow_serving/example/mnist_client*
+
+RUN tar cvhf /root/mnist_export.tar.gz /src/serving/bazel-bin/tensorflow_serving/example/mnist_export*
 
 # Default CMD is to do a test
 CMD [ "/root/test.sh" ]
